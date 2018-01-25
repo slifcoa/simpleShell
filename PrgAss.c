@@ -25,6 +25,8 @@ int main(int argc, char* argv[]){
 	//Variables for tracking CPU time used
 	clock_t start, end;
 	double cpu_time_used;
+	long sec;
+	long usec;
 
 	//Placeholder variable for Involuntary Context Switches
 	long lastIVC;
@@ -74,7 +76,10 @@ int main(int argc, char* argv[]){
 			//Call before forking to get Previous total IVC of Child's
 			getrusage(RUSAGE_CHILDREN, &ru);
 			lastIVC = ru.ru_nivcsw;
-	
+
+			sec = ru.ru_stime.tv_sec;
+			usec = ru.ru_stime.tv_usec;	
+
 			//Spawn a child process
 			pid = fork();
 	
@@ -107,8 +112,8 @@ int main(int argc, char* argv[]){
 			getrusage(RUSAGE_CHILDREN, &ru);
 		
 			//Print out the amount of ICS's and CPU time used
-			printf("Child %ld: INVOLUNTARY CONTEXT SWITCHES: %ld \n", (long) child, ru.ru_nivcsw - lastIVC);
-			printf("Child %ld CPU time used: %lf nanoseconds\n",(long) child, cpu_time_used);	
+			printf("Child %ld: INVOLUNTARY CONTEXT SWITCHES: %ld \n", (long) child, ru.ru_nivcsw - lastIVC);	
+			printf("Child %ld CPU time used: %ld.%06ld\n seconds", (long) child, ru.ru_stime.tv_sec - sec, ru.ru_stime.tv_usec - usec);
 		}
 	}	 
 		
