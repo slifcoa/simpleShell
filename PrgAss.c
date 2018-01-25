@@ -23,8 +23,6 @@ int main(int argc, char* argv[]){
 	int status;
 	
 	//Variables for tracking CPU time used
-	clock_t start, end;
-	double cpu_time_used;
 	long sec;
 	long usec;
 
@@ -62,21 +60,14 @@ int main(int argc, char* argv[]){
 			i++;
 			tokens[i] = strtok(NULL, " \n"); 
 						}
-		
 			//Ends program if quit command is inputted
 			if(strcmp(tokens[0] , "quit") == 0){
 			break;
 			}
 	
-			printf("Processing...\n");
-
-			//Begin clocking CPU time
-			start = clock();
-		
-			//Call before forking to get Previous total IVC of Child's
+			//Call before forking to get Previous child usage stats...Retrieved this concept from https://stackoverflow.com/questions/1469495/unix-programming-struct-timeval-how-to-print-it-c-programming
 			getrusage(RUSAGE_CHILDREN, &ru);
 			lastIVC = ru.ru_nivcsw;
-
 			sec = ru.ru_stime.tv_sec;
 			usec = ru.ru_stime.tv_usec;	
 
@@ -101,19 +92,14 @@ int main(int argc, char* argv[]){
 			else
 			{
 			child = wait(&status);
-			end = clock();
 			}
-		
-			//Find total time cpu was used by child and convert to nanoseconds
-			cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-			cpu_time_used = cpu_time_used * 1000000000;
-		
+				
 			//Get usage info of Child process
 			getrusage(RUSAGE_CHILDREN, &ru);
 		
 			//Print out the amount of ICS's and CPU time used
 			printf("Child %ld: INVOLUNTARY CONTEXT SWITCHES: %ld \n", (long) child, ru.ru_nivcsw - lastIVC);	
-			printf("Child %ld CPU time used: %ld.%06ld\n seconds", (long) child, ru.ru_stime.tv_sec - sec, ru.ru_stime.tv_usec - usec);
+			printf("Child %ld CPU time used: %ld.%06ld seconds\n", (long) child, ru.ru_stime.tv_sec - sec, ru.ru_stime.tv_usec - usec);
 		}
 	}	 
 		
