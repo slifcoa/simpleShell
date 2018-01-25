@@ -26,6 +26,9 @@ int main(int argc, char* argv[]){
 	clock_t start, end;
 	double cpu_time_used;
 
+	//Placeholder variable for Involuntary Context Switches
+	long lastIVC;
+
 	//Tracks use of context switches
 	struct rusage ru;
 	
@@ -42,60 +45,73 @@ int main(int argc, char* argv[]){
 
 		//reads entire line
 		fgets(input, MAX, stdin);
-		
-		//Initializes the tokenizer 
-		tokens[0] = strtok(input, " \n");
 	
-		//parses through the user input 
-		while(tokens[i] != NULL){
-		i++;
-		tokens[i] = strtok(NULL, " \n"); 
+		//This line prevents segmentation faults on blank inputs	
+		input[strlen(input) -1] = '\0';
+	
+		//Initializes the tokenizer
+		tokens[0] = strtok(input, " \n");
+
+		//handles blank lines...Prompt's user to enter command again
+		if(input[0] != '\0'){
+	
+			//parses through the user input 
+			while(tokens[i] != NULL){
+			i++;
+			tokens[i] = strtok(NULL, " \n"); 
 						}
 		
-		//Ends program if quit command is inputted
-		if(strcmp(tokens[0] , "quit") == 0){
-		break;
-		}
+			//Ends program if quit command is inputted
+			if(strcmp(tokens[0] , "quit") == 0){
+			break;
+			}
 	
-		printf("Processing...\n");
+			printf("Processing...\n");
 
-		//Begin clocking CPU time
-		start = clock();
-		pid = fork();
+			//Begin clocking CPU time
+			start = clock();
+		
+			//Call before forking to get Previous total IVC of Child's
+			getrusage(RUSAGE_CHILDREN, &ru);
+			lastIVC = ru.ru_nivcsw;
 	
-		//If child process failed to spawn
-		if(pid < 0)
-		{
-		perror("Fork Failed");
-		exit(1);		
-		}
+			//Spawn a child process
+			pid = fork();
+	
+			//If child process failed to spawn
+			if(pid < 0)
+			{
+			perror("Fork Failed");
+			exit(1);		
+			}
 
-		//Parent process waits until child executes
-		else if(pid == 0)
-		{
-		execvp(tokens[0],tokens);
-		exit(0);
-		}
+			//Child executes command
+			else if(pid == 0)
+			{
+			execvp(tokens[0],tokens);
+			exit(0);
+			}
 
-		//Child process executes command
-		else
-		{
-		child = wait(&status);
-		end = clock();
+			//Parent waits for Child process to execute command
+			else
+			{
+			child = wait(&status);
+			end = clock();
+			}
+		
+			//Find total time cpu was used by child and convert to nanoseconds
+			cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
+			cpu_time_used = cpu_time_used * 1000000000;
+		
+			//Get usage info of Child process
+			getrusage(RUSAGE_CHILDREN, &ru);
+		
+			//Print out the amount of ICS's and CPU time used
+			printf("Child %ld: INVOLUNTARY CONTEXT SWITCHES: %ld \n", (long) child, ru.ru_nivcsw - lastIVC);
+			printf("Child %ld CPU time used: %lf nanoseconds\n",(long) child, cpu_time_used);	
 		}
+	}	 
 		
-		//Find total time cpu was used by child and convert to nanoseconds
-		cpu_time_used = ((double) (end - start)) / CLOCKS_PER_SEC;
-		cpu_time_used = cpu_time_used * 1000000000;
-		
-		//Get usage info of Child process
-		getrusage(RUSAGE_CHILDREN, &ru);
-		
-		//Print out the amount of ICS's and CPU time used
-		printf("Child %ld: INVOLUNTARY CONTEXT SWITCHES: %ld \n", (long) child, ru.ru_nivcsw);
-		printf("Child %ld CPU time used: %lf nanoseconds\n",(long) child, cpu_time_used);	
-	}
-
 	printf("Ending Program... \n");
 	return 0;
 }
